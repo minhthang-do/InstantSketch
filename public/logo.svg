@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="sketchGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ec4899" />
+      <stop offset="50%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#8b5cf6" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="100" height="100" rx="26" fill="url(#sketchGrad)" filter="url(#shadow)"/>
+  <!-- Canvas board inside -->
+  <rect x="18" y="18" width="64" height="64" rx="14" fill="#ffffff" fill-opacity="0.95"/>
+  <!-- Heart doodle inside -->
+  <path d="M50 64 C35 52 30 42 30 35 C30 28 35 24 40 24 C45 24 48 27 50 30 C52 27 55 24 60 24 C65 24 70 28 70 35 C70 42 65 52 50 64 Z" fill="#ec4899" stroke="#db2777" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Stylus pen -->
+  <g transform="translate(48, 14) rotate(35)">
+    <rect x="0" y="0" width="10" height="42" rx="4" fill="#1e293b"/>
+    <polygon points="0,42 10,42 5,52" fill="#fbbf24"/>
+    <circle cx="5" cy="52" r="1.5" fill="#f43f5e"/>
+  </g>
+</svg>

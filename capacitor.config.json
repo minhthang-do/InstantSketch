@@ -1,0 +1,8 @@
+{
+  "appId": "com.instantsketch.app",
+  "appName": "InstantSketch",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
