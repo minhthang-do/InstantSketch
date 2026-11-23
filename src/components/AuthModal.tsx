@@ -4,7 +4,10 @@ import {
   sendEmailOtp, verifyEmailOtp, signInWithGoogle, 
   signOut, isUsernameAvailable, saveCurrentUser 
 } from '../services/authService';
-import { X, Mail, ShieldCheck, LogOut, Check, User } from 'lucide-react';
+import { 
+  getSupabaseConfig, setCustomSupabaseConfig, isSupabaseConfigured 
+} from '../services/supabaseClient';
+import { X, Mail, ShieldCheck, LogOut, Check, User, Settings, ExternalLink } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -28,7 +31,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [newName, setNewName] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [selectedAvatar] = useState('🎨');
-  const [demoOtpCode, setDemoOtpCode] = useState<string | null>(null);
+
+  // Supabase Configuration in-app drawer
+  const [showConfigDrawer, setShowConfigDrawer] = useState(!isSupabaseConfigured());
+  const initialConfig = getSupabaseConfig();
+  const [supabaseUrlInput, setSupabaseUrlInput] = useState(initialConfig.url);
+  const [supabaseKeyInput, setSupabaseKeyInput] = useState(initialConfig.anonKey);
 
   // Status feedback
   const [isLoading, setIsLoading] = useState(false);
@@ -41,7 +49,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Handle Send OTP
+  // Handle Save Supabase Config
+  const handleSaveConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabaseUrlInput.trim() || !supabaseKeyInput.trim()) {
+      setStatusMessage({ text: 'Vui lòng nhập đầy đủ Supabase Project URL và Anon Public Key!', isError: true });
+      return;
+    }
+    setCustomSupabaseConfig(supabaseUrlInput, supabaseKeyInput);
+  };
+
+  // Handle Send Real OTP
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -52,16 +70,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     if (result.success) {
       setOtpStep('verify');
-      if (result.mockOtp) {
-        setDemoOtpCode(result.mockOtp);
-      }
       setStatusMessage({ text: result.message, isError: false });
     } else {
+      if (result.needConfig) {
+        setShowConfigDrawer(true);
+      }
       setStatusMessage({ text: result.message, isError: true });
     }
   };
 
-  // Handle Verify OTP
+  // Handle Verify Real OTP
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -85,15 +103,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  // Handle Google Sign In
+  // Handle Real Google Sign In
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
+    setStatusMessage(null);
     const result = await signInWithGoogle();
     setIsLoading(false);
 
-    if (result.success && result.user) {
-      onUserChange(result.user);
-      onClose();
+    if (result.success) {
+      setStatusMessage({ text: result.message, isError: false });
+    } else {
+      if (result.needConfig) {
+        setShowConfigDrawer(true);
+      }
+      setStatusMessage({ text: result.message, isError: true });
     }
   };
 
@@ -133,8 +156,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -143,19 +166,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-100">
-                {currentUser ? 'Hồ Sơ & Tài Khoản' : 'Đăng Nhập InstantSketch'}
+                {currentUser ? 'Hồ Sơ & Tài Khoản' : 'Đăng Nhập Thật'}
               </h2>
               <p className="text-xs text-slate-400">
-                {currentUser ? `@${currentUser.username}` : 'Đăng nhập qua Email OTP hoặc Google'}
+                {currentUser ? `@${currentUser.username}` : 'Gửi mã OTP thật về Gmail & Đăng nhập Google thật'}
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowConfigDrawer(!showConfigDrawer)}
+              className={`p-1.5 rounded-lg border transition-all ${
+                showConfigDrawer 
+                  ? 'bg-indigo-600 text-white border-indigo-500' 
+                  : 'bg-slate-800 text-slate-400 hover:text-white border-slate-700'
+              }`}
+              title="Cấu hình Supabase (Gửi mail thật & Google OAuth thật)"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Message Banner */}
@@ -165,11 +201,66 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        <div className="p-5">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Supabase Connection Setup Box */}
+          {showConfigDrawer && (
+            <form onSubmit={handleSaveConfig} className="p-3.5 rounded-2xl bg-slate-950 border border-indigo-500/40 space-y-2.5 text-xs animate-in slide-in-from-top-2 duration-150">
+              <div className="flex items-center justify-between text-indigo-300 font-bold">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-indigo-400" />
+                  Cấu hình Supabase (Gửi OTP & Google OAuth)
+                </span>
+                <a
+                  href="https://supabase.com/dashboard"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 text-[11px] text-pink-400 hover:underline"
+                >
+                  <span>Mở Supabase</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Để Supabase tự động gửi mã OTP thật về Gmail và kết nối Google OAuth thật, bạn chỉ cần điền Project URL & Anon Key (miễn phí 100%):
+              </p>
+
+              <div>
+                <label className="text-[11px] text-slate-300 block mb-1">Project URL:</label>
+                <input
+                  type="url"
+                  required
+                  value={supabaseUrlInput}
+                  onChange={(e) => setSupabaseUrlInput(e.target.value)}
+                  placeholder="https://xyzcompany.supabase.co"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] text-slate-300 block mb-1">Anon Public Key:</label>
+                <input
+                  type="text"
+                  required
+                  value={supabaseKeyInput}
+                  onChange={(e) => setSupabaseKeyInput(e.target.value)}
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition-all shadow"
+              >
+                Lưu & Kết Nối Backend Thật
+              </button>
+            </form>
+          )}
+
           {currentUser ? (
             /* Logged in: Profile Settings */
             <div className="space-y-4">
-              {/* Avatar Selection */}
               <div>
                 <label className="text-xs text-slate-400 font-semibold mb-1.5 block uppercase tracking-wider">
                   Chọn Avatar đại diện:
@@ -191,7 +282,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               </div>
 
-              {/* Name */}
               <div>
                 <label className="text-xs text-slate-400 font-semibold mb-1 block uppercase tracking-wider">
                   Tên hiển thị:
@@ -205,7 +295,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 />
               </div>
 
-              {/* Username */}
               <div>
                 <label className="text-xs text-slate-400 font-semibold mb-1 flex items-center gap-1 uppercase tracking-wider">
                   <span>Username</span>
@@ -223,13 +312,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               </div>
 
-              {/* Email info */}
               <div className="bg-slate-800/40 rounded-xl p-3 border border-slate-700/50 flex items-center justify-between text-xs">
                 <span className="text-slate-400">Email:</span>
-                <span className="text-slate-200 font-medium">{currentUser.email}</span>
+                <span className="text-slate-200 font-medium">{currentUser.email || 'Chưa liên kết email'}</span>
               </div>
 
-              {/* Actions */}
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={handleSaveProfile}
@@ -248,7 +335,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             </div>
           ) : (
-            /* Not logged in: Sign in with Email OTP or Google */
+            /* Not logged in: Sign in with Real Google or Real Email OTP */
             <div className="space-y-4">
               {/* Google Sign In Button */}
               <button
@@ -262,12 +349,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
-                <span>Đăng nhập nhanh bằng Google</span>
+                <span>Đăng nhập trực tiếp bằng Google</span>
               </button>
 
               <div className="flex items-center gap-3 my-2">
                 <div className="flex-1 h-[1px] bg-slate-800" />
-                <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Hoặc qua Email OTP</span>
+                <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Hoặc gửi mã OTP về Gmail</span>
                 <div className="flex-1 h-[1px] bg-slate-800" />
               </div>
 
@@ -275,7 +362,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <form onSubmit={handleSendOtp} className="space-y-3">
                   <div>
                     <label className="text-xs text-slate-300 font-medium mb-1 block">
-                      Nhập địa chỉ Email:
+                      Nhập địa chỉ Email nhận mã OTP:
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -284,7 +371,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="tenban@gmail.com"
+                        placeholder="VD: dothang262008@gmail.com"
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
                       />
                     </div>
@@ -296,31 +383,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     className="w-full py-2.5 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-600 hover:to-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-500/25 transition-all flex items-center justify-center gap-2"
                   >
                     <ShieldCheck className="w-4 h-4" />
-                    <span>{isLoading ? 'Đang gửi...' : 'Gửi mã OTP xác thực'}</span>
+                    <span>{isLoading ? 'Đang gửi mã về email...' : 'Gửi mã OTP về hòm thư Gmail'}</span>
                   </button>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOtp} className="space-y-3">
-                  {/* Demo OTP Helper pill */}
-                  {demoOtpCode && (
-                    <div className="p-2.5 rounded-xl bg-indigo-950/70 border border-indigo-500/40 text-xs flex items-center justify-between">
-                      <div>
-                        <span className="text-slate-400">Mã OTP thử nghiệm: </span>
-                        <strong className="text-indigo-300 font-mono tracking-widest text-sm">{demoOtpCode}</strong>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setOtpToken(demoOtpCode)}
-                        className="text-[11px] bg-indigo-600 px-2 py-0.5 rounded-md text-white font-semibold"
-                      >
-                        Tự điền
-                      </button>
-                    </div>
-                  )}
+                  <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-slate-300">
+                    Mã xác thực gồm 6 chữ số đã được gửi đến <strong>{email}</strong>. Vui lòng mở email của bạn và nhập mã vào ô bên dưới:
+                  </div>
 
                   <div>
                     <label className="text-xs text-slate-300 font-medium mb-1 block">
-                      Nhập mã OTP gồm 6 chữ số:
+                      Nhập mã OTP 6 số:
                     </label>
                     <input
                       type="text"
@@ -328,7 +402,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       required
                       value={otpToken}
                       onChange={(e) => setOtpToken(e.target.value)}
-                      placeholder="VD: 123456"
+                      placeholder="VD: 849201"
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-center text-lg font-mono tracking-widest text-white focus:outline-none focus:border-indigo-500"
                     />
                   </div>
@@ -361,7 +435,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     disabled={isLoading || otpToken.length < 4}
                     className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2"
                   >
-                    <span>{isLoading ? 'Đang xác thực...' : 'Xác thực & Bắt đầu vẽ!'}</span>
+                    <span>{isLoading ? 'Đang xác thực...' : 'Xác thực OTP & Bắt đầu'}</span>
                   </button>
 
                   <button
@@ -369,7 +443,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     onClick={() => setOtpStep('send')}
                     className="w-full text-center text-xs text-slate-400 hover:text-slate-300 py-1"
                   >
-                    Quay lại đổi email
+                    Đổi email khác
                   </button>
                 </form>
               )}

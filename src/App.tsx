@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import type { ToolType, BackgroundStyle, UserProfile, FriendUser, SketchItem } from './types/sketch';
 import { 
-  getCurrentUser 
+  getCurrentUser, initAuthListener 
 } from './services/authService';
 import { 
   getFriends, getActiveFriendId, getIncomingRequests, 
@@ -56,6 +56,17 @@ export function App() {
   } | null>(null);
 
   const canvasExporterRef = useRef<(() => string) | null>(null);
+
+  // Listen to Supabase Google OAuth and auth session changes
+  useEffect(() => {
+    const unsub = initAuthListener((user) => {
+      setCurrentUser(user);
+      const friends = getFriends(user.id);
+      const activeId = getActiveFriendId(user.id);
+      setActiveFriend(friends.find(f => f.id === activeId) || (friends.length > 0 ? friends[0] : null));
+    });
+    return () => unsub();
+  }, []);
 
   // Sync friend requests badge
   useEffect(() => {
