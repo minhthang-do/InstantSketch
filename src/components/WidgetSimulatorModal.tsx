@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import type { SketchItem, UserProfile } from '../types/sketch';
+import type { SketchItem, UserProfile, FriendUser } from '../types/sketch';
 import { X, Smartphone, Sparkles, RefreshCw, CheckCircle2, Heart } from 'lucide-react';
 
 interface WidgetSimulatorModalProps {
   isOpen: boolean;
   onClose: () => void;
   latestSketch: SketchItem | null;
-  profile: UserProfile;
+  currentUser: UserProfile | null;
+  activeFriend: FriendUser | null;
   onSimulateFriendSketch: () => void;
 }
 
@@ -14,7 +15,7 @@ export const WidgetSimulatorModal: React.FC<WidgetSimulatorModalProps> = ({
   isOpen,
   onClose,
   latestSketch,
-  profile,
+  activeFriend,
   onSimulateFriendSketch,
 }) => {
   const [widgetSize, setWidgetSize] = useState<'small' | 'medium'>('medium');
@@ -47,7 +48,7 @@ export const WidgetSimulatorModal: React.FC<WidgetSimulatorModalProps> = ({
             <div>
               <h2 className="text-sm font-bold text-slate-100 leading-none">Mô Phỏng Widget Màn Hình Điện Thoại</h2>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Kết nối cùng {profile.partnerName || 'Bạn bè'} &bull; Xem trước giao diện Widget
+                {activeFriend ? `Đồng bộ cùng ${activeFriend.name} (@${activeFriend.username})` : 'Chưa chọn bạn bè'}
               </p>
             </div>
           </div>
@@ -115,7 +116,6 @@ export const WidgetSimulatorModal: React.FC<WidgetSimulatorModalProps> = ({
         {/* Phone Mockup Screen */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
           <div className="w-[300px] sm:w-[320px] rounded-[42px] p-3 bg-slate-800 shadow-2xl border-4 border-slate-700 relative overflow-hidden">
-            {/* Camera punch hole / Dynamic Island */}
             {phoneOs === 'ios' ? (
               <div className="absolute top-4 left-1/2 -translate-x-1/2 w-24 h-5 bg-black rounded-full z-20 flex items-center justify-end px-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-800" />
@@ -124,9 +124,8 @@ export const WidgetSimulatorModal: React.FC<WidgetSimulatorModalProps> = ({
               <div className="absolute top-4 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-black rounded-full z-20 border border-slate-800" />
             )}
 
-            {/* Phone Screen Wallpaper Container */}
+            {/* Screen Wallpaper */}
             <div className="w-full h-[520px] rounded-[34px] bg-gradient-to-tr from-slate-900 via-indigo-950 to-purple-950 relative p-4 flex flex-col justify-between overflow-hidden shadow-inner">
-              {/* Wallpaper Ambient Glow */}
               <div className="absolute top-10 left-10 w-44 h-44 bg-pink-500/20 rounded-full blur-3xl pointer-events-none" />
               <div className="absolute bottom-10 right-10 w-44 h-44 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
 
@@ -143,7 +142,6 @@ export const WidgetSimulatorModal: React.FC<WidgetSimulatorModalProps> = ({
 
               {/* Home Screen Content */}
               <div className="my-auto py-2 flex flex-col items-center">
-                {/* Clock / Date widget glance */}
                 <div className="text-center mb-3">
                   <div className="text-3xl font-extralight text-white tracking-tight">09:41</div>
                   <div className="text-[11px] text-white/70 font-medium">Thứ Hai, 23 Tháng 11</div>
@@ -175,7 +173,6 @@ export const WidgetSimulatorModal: React.FC<WidgetSimulatorModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Love reaction icon bottom right */}
                       <div className="absolute bottom-2 right-2 bg-pink-500/90 text-white text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-md">
                         <Heart className="w-2.5 h-2.5 fill-current" />
                         <span>Live</span>

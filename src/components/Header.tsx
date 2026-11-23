@@ -1,10 +1,13 @@
 import React from 'react';
-import type { UserProfile } from '../types/sketch';
+import type { UserProfile, FriendUser } from '../types/sketch';
 import { Send, Smartphone, History, Users, Sparkles } from 'lucide-react';
 
 interface HeaderProps {
-  profile: UserProfile;
-  onOpenPairModal: () => void;
+  currentUser: UserProfile | null;
+  activeFriend: FriendUser | null;
+  pendingRequestsCount: number;
+  onOpenFriendsModal: () => void;
+  onOpenAuthModal: () => void;
   onOpenWidgetModal: () => void;
   onOpenHistoryModal: () => void;
   onSendSketch: () => void;
@@ -12,8 +15,11 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  profile,
-  onOpenPairModal,
+  currentUser,
+  activeFriend,
+  pendingRequestsCount,
+  onOpenFriendsModal,
+  onOpenAuthModal,
   onOpenWidgetModal,
   onOpenHistoryModal,
   onSendSketch,
@@ -23,11 +29,15 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="w-full bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 px-4 py-2.5 flex items-center justify-between select-none z-30">
       {/* Brand logo & title */}
       <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 p-[2px] shadow-lg shadow-purple-500/20">
-          <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-            <span className="text-lg">🎨</span>
+        <button
+          onClick={onOpenAuthModal}
+          className="w-9 h-9 rounded-xl bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 p-[2px] shadow-lg shadow-purple-500/20 active:scale-95 transition-transform"
+          title="Tài khoản & Hồ sơ"
+        >
+          <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-lg">
+            {currentUser?.avatar || '🎨'}
           </div>
-        </div>
+        </button>
         <div>
           <h1 className="text-base font-extrabold tracking-tight text-white flex items-center gap-1.5 leading-none">
             InstantSketch
@@ -35,28 +45,52 @@ export const Header: React.FC<HeaderProps> = ({
               Live
             </span>
           </h1>
-          <p className="text-[11px] text-slate-400 font-medium">Vẽ lên Widget bạn bè</p>
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
+            {currentUser ? (
+              <button 
+                onClick={onOpenAuthModal}
+                className="hover:text-indigo-300 transition-colors font-mono"
+              >
+                @{currentUser.username}
+              </button>
+            ) : (
+              <button 
+                onClick={onOpenAuthModal}
+                className="text-pink-400 font-semibold hover:underline"
+              >
+                Đăng nhập
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Middle: Partner status pill */}
+      {/* Middle & Right Controls */}
       <div className="flex items-center gap-2">
+        {/* Friends & Search Pill */}
         <button
-          onClick={onOpenPairModal}
-          className="flex items-center gap-2 bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700/80 px-3 py-1.5 rounded-full transition-all active:scale-95 text-xs text-slate-200"
-          title="Ghép đôi với bạn bè"
+          onClick={onOpenFriendsModal}
+          className="relative flex items-center gap-2 bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700/80 px-3 py-1.5 rounded-full transition-all active:scale-95 text-xs text-slate-200 shadow-sm"
+          title="Danh sách bạn bè & Tìm kiếm @username"
         >
-          {profile.partnerName ? (
+          {activeFriend ? (
             <>
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-sm">{profile.partnerAvatar || '🦊'}</span>
-              <span className="font-semibold max-w-[90px] sm:max-w-[130px] truncate">{profile.partnerName}</span>
+              <span className="text-sm">{activeFriend.avatar}</span>
+              <span className="font-semibold max-w-[80px] sm:max-w-[120px] truncate">{activeFriend.name}</span>
             </>
           ) : (
             <>
               <Users className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="font-medium text-indigo-300">Ghép đôi bạn bè</span>
+              <span className="font-medium text-indigo-300">Tìm & Kết bạn</span>
             </>
+          )}
+
+          {/* Pending Requests Badge */}
+          {pendingRequestsCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-pink-500 text-white text-[9px] font-extrabold flex items-center justify-center animate-bounce shadow">
+              {pendingRequestsCount}
+            </span>
           )}
         </button>
 
@@ -79,7 +113,7 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="hidden sm:inline">Widget Điện thoại</span>
         </button>
 
-        {/* Send to Partner Widget Button */}
+        {/* Send to Active Friend Widget Button */}
         <button
           onClick={onSendSketch}
           disabled={isSending}
